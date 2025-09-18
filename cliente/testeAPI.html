@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Consumidor da API</title>
+</head>
+<body>
+  <h1>Consumidor da API de Produtos</h1>
+  <button onclick="listar()">Listar Produtos</button>
+  <button onclick="inserir()">Inserir Produto</button>
+  <button onclick="atualizar()">Atualizar Produto</button>
+  <button onclick="remover()">Remover Produto</button>
+  <pre id="saida"></pre>
+
+  <script>
+    const API_URL = "http://localhost:3000/produtos";
+
+    async function listar() {
+      const res = await fetch(API_URL);
+      document.getElementById("saida").textContent = JSON.stringify(await res.json(), null, 2);
+    }
+
+    async function inserir() {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ descricao: "Teclado Gamer", preco: 199.9, qtde: 15 })
+      });
+      document.getElementById("saida").textContent = JSON.stringify(await res.json(), null, 2);
+    }
+
+    async function atualizar() {
+      const res = await fetch(API_URL + "/1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ descricao: "Mouse Gamer RGB", preco: 99.9, qtde: 30 })
+      });
+      document.getElementById("saida").textContent = JSON.stringify(await res.json(), null, 2);
+    }
+
+    async function remover() {
+      const res = await fetch(API_URL + "/1", { method: "DELETE" });
+      document.getElementById("saida").textContent = JSON.stringify(await res.json(), null, 2);
+    }
+  </script>
+</body>
+</html>
