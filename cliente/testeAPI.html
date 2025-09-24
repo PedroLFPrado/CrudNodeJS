@@ -3,44 +3,144 @@
 <head>
   <meta charset="UTF-8">
   <title>Consumidor da API</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Consumidor da API de Produtos</h1>
-  <button onclick="listar()">Listar Produtos</button>
-  <button onclick="inserir()">Inserir Produto</button>
-  <button onclick="atualizar()">Atualizar Produto</button>
-  <button onclick="remover()">Remover Produto</button>
-  <pre id="saida"></pre>
+  <h1>Gerenciador de Produtos</h1>
+
+  <!-- Formulário de inclusão/alteração -->
+  <section id="form-section">
+    <h2 id="form-title">Adicionar Produto</h2>
+    <form id="produto-form">
+      <input type="hidden" id="codigo" />
+      <div class="form-group">
+        <label for="descricao">Descrição:</label>
+        <input type="text" id="descricao" required>
+      </div>
+      <div class="form-group">
+        <label for="preco">Preço:</label>
+        <input type="number" id="preco" step="0.01" required>
+      </div>
+      <div class="form-group">
+        <label for="qtde">Quantidade:</label>
+        <input type="number" id="qtde" required>
+      </div>
+      <button type="submit" id="salvar-btn">Salvar</button>
+      <button type="button" id="cancelar-btn" style="display:none;">Cancelar</button>
+    </form>
+  </section>
+
+  <!-- Listagem -->
+  <section id="lista-section">
+    <h2>Lista de Produtos</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Descrição</th>
+          <th>Preço</th>
+          <th>Quantidade</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tabela-produtos"></tbody>
+    </table>
+  </section>
 
   <script>
     const API_URL = "http://localhost:3000/produtos";
+    const form = document.getElementById("produto-form");
+    const codigoInput = document.getElementById("codigo");
+    const descricaoInput = document.getElementById("descricao");
+    const precoInput = document.getElementById("preco");
+    const qtdeInput = document.getElementById("qtde");
+    const formTitle = document.getElementById("form-title");
+    const salvarBtn = document.getElementById("salvar-btn");
+    const cancelarBtn = document.getElementById("cancelar-btn");
+    const tabela = document.getElementById("tabela-produtos");
+
+    // Listar produtos ao carregar
+    document.addEventListener("DOMContentLoaded", listar);
 
     async function listar() {
+      tabela.innerHTML = "";
       const res = await fetch(API_URL);
-      document.getElementById("saida").textContent = JSON.stringify(await res.json(), null, 2);
-    }
+      const produtos = await res.json();
 
-    async function inserir() {
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ descricao: "Teclado Gamer", preco: 199.9, qtde: 15 })
+      produtos.forEach(prod => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${prod.codigo}</td>
+          <td>${prod.descricao}</td>
+          <td>R$ ${prod.preco.toFixed(2)}</td>
+          <td>${prod.qtde}</td>
+          <td>
+            <button onclick="editar(${prod.codigo}, '${prod.descricao}', ${prod.preco}, ${prod.qtde})">Editar</button>
+            <button onclick="remover(${prod.codigo})">Remover</button>
+          </td>
+        `;
+        tabela.appendChild(tr);
       });
-      document.getElementById("saida").textContent = JSON.stringify(await res.json(), null, 2);
     }
 
-    async function atualizar() {
-      const res = await fetch(API_URL + "/1", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ descricao: "Mouse Gamer RGB", preco: 99.9, qtde: 30 })
-      });
-      document.getElementById("saida").textContent = JSON.stringify(await res.json(), null, 2);
+    // Enviar formulário (inserir ou atualizar)
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const codigo = codigoInput.value;
+      const produto = {
+        descricao: descricaoInput.value,
+        preco: parseFloat(precoInput.value),
+        qtde: parseInt(qtdeInput.value)
+      };
+
+      if (codigo) {
+        // Atualizar
+        await fetch(`${API_URL}/${codigo}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(produto)
+        });
+      } else {
+        // Inserir
+        await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(produto)
+        });
+      }
+
+      resetarForm();
+      listar();
+    });
+
+    function editar(codigo, descricao, preco, qtde) {
+      codigoInput.value = codigo;
+      descricaoInput.value = descricao;
+      precoInput.value = preco;
+      qtdeInput.value = qtde;
+      formTitle.textContent = "Editar Produto";
+      salvarBtn.textContent = "Atualizar";
+      cancelarBtn.style.display = "inline-block";
     }
 
-    async function remover() {
-      const res = await fetch(API_URL + "/1", { method: "DELETE" });
-      document.getElementById("saida").textContent = JSON.stringify(await res.json(), null, 2);
+    async function remover(codigo) {
+      if (confirm("Deseja realmente remover este produto?")) {
+        await fetch(`${API_URL}/${codigo}`, { method: "DELETE" });
+        listar();
+      }
+    }
+
+    cancelarBtn.addEventListener("click", resetarForm);
+
+    function resetarForm() {
+      codigoInput.value = "";
+      descricaoInput.value = "";
+      precoInput.value = "";
+      qtdeInput.value = "";
+      formTitle.textContent = "Adicionar Produto";
+      salvarBtn.textContent = "Salvar";
+      cancelarBtn.style.display = "none";
     }
   </script>
 </body>
