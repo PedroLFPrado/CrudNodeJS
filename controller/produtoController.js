@@ -3,9 +3,12 @@ const Produto = require("../model/produto");
 const ProdutoController = {
   async listar(req, res) {
     try {
+      console.log('Tentando listar produtos...');
       const produtos = await Produto.listar();
+      console.log(`Encontrados ${produtos.length} produtos`);
       res.json(produtos);
     } catch (err) {
+      console.error('Erro ao listar produtos:', err.message);
       res.status(500).json({ erro: err.message });
     }
   },

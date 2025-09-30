@@ -48,7 +48,8 @@
   </section>
 
   <script>
-    const API_URL = "http://localhost:3000/produtos";
+    //const API_URL = "http://localhost:3000/produtos"; 
+    const API_URL = "http://172.30.60.175:3000/produtos";
     const form = document.getElementById("produto-form");
     const codigoInput = document.getElementById("codigo");
     const descricaoInput = document.getElementById("descricao");
@@ -63,55 +64,89 @@
     document.addEventListener("DOMContentLoaded", listar);
 
     async function listar() {
-      tabela.innerHTML = "";
-      const res = await fetch(API_URL);
-      const produtos = await res.json();
+      try {
+        tabela.innerHTML = "";
+        const res = await fetch(API_URL);
+        
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        
+        const produtos = await res.json();
+        
+        // Verificar se produtos é um array
+        if (!Array.isArray(produtos)) {
+          console.error('Resposta da API não é um array:', produtos);
+          tabela.innerHTML = '<tr><td colspan="5">Erro: Dados inválidos recebidos da API</td></tr>';
+          return;
+        }
 
-      produtos.forEach(prod => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${prod.codigo}</td>
-          <td>${prod.descricao}</td>
-          <td>R$ ${prod.preco.toFixed(2)}</td>
-          <td>${prod.qtde}</td>
-          <td>
-            <button onclick="editar(${prod.codigo}, '${prod.descricao}', ${prod.preco}, ${prod.qtde})">Editar</button>
-            <button onclick="remover(${prod.codigo})">Remover</button>
-          </td>
-        `;
-        tabela.appendChild(tr);
-      });
+        if (produtos.length === 0) {
+          tabela.innerHTML = '<tr><td colspan="5">Nenhum produto encontrado</td></tr>';
+          return;
+        }
+
+        produtos.forEach(prod => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${prod.codigo}</td>
+            <td>${prod.descricao}</td>
+            <td>R$ ${prod.preco.toFixed(2)}</td>
+            <td>${prod.qtde}</td>
+            <td>
+              <button onclick="editar(${prod.codigo}, '${prod.descricao}', ${prod.preco}, ${prod.qtde})">Editar</button>
+              <button onclick="remover(${prod.codigo})">Remover</button>
+            </td>
+          `;
+          tabela.appendChild(tr);
+        });
+      } catch (error) {
+        console.error('Erro ao carregar produtos:', error);
+        tabela.innerHTML = `<tr><td colspan="5">Erro ao conectar com a API: ${error.message}</td></tr>`;
+      }
     }
 
     // Enviar formulário (inserir ou atualizar)
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      const codigo = codigoInput.value;
-      const produto = {
-        descricao: descricaoInput.value,
-        preco: parseFloat(precoInput.value),
-        qtde: parseInt(qtdeInput.value)
-      };
+      try {
+        const codigo = codigoInput.value;
+        const produto = {
+          descricao: descricaoInput.value,
+          preco: parseFloat(precoInput.value),
+          qtde: parseInt(qtdeInput.value)
+        };
 
-      if (codigo) {
-        // Atualizar
-        await fetch(`${API_URL}/${codigo}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(produto)
-        });
-      } else {
-        // Inserir
-        await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(produto)
-        });
+        let response;
+        if (codigo) {
+          // Atualizar
+          response = await fetch(`${API_URL}/${codigo}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(produto)
+          });
+        } else {
+          // Inserir
+          response = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(produto)
+          });
+        }
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.erro || `HTTP error! status: ${response.status}`);
+        }
+
+        resetarForm();
+        listar();
+        alert(codigo ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
+      } catch (error) {
+        console.error('Erro ao salvar produto:', error);
+        alert(`Erro ao salvar produto: ${error.message}`);
       }
-
-      resetarForm();
-      listar();
     });
 
     function editar(codigo, descricao, preco, qtde) {
@@ -126,8 +161,20 @@
 
     async function remover(codigo) {
       if (confirm("Deseja realmente remover este produto?")) {
-        await fetch(`${API_URL}/${codigo}`, { method: "DELETE" });
-        listar();
+        try {
+          const response = await fetch(`${API_URL}/${codigo}`, { method: "DELETE" });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.erro || `HTTP error! status: ${response.status}`);
+          }
+          
+          listar();
+          alert('Produto removido com sucesso!');
+        } catch (error) {
+          console.error('Erro ao remover produto:', error);
+          alert(`Erro ao remover produto: ${error.message}`);
+        }
       }
     }
 
